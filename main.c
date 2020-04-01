@@ -21,11 +21,12 @@ int main() {
     // Check for errors
     if(serial_port < 0) {
         printf("Error %i from open: %s\n", errno, strerror(errno));
+        return errno;
     }
 
     if (config_serial_port(&serial_port)) {
         printf("Error - Serial port config");
-        return 1;
+        return errno;
     }
 
     //unsigned char msg[] = { 'H', 'e', 'l', 'l', 'o', '\r' };
@@ -131,7 +132,7 @@ int config_serial_port(int * serial_port){
     // Save tty settings, also checking for error
     if(tcsetattr(*serial_port, TCSANOW, &tty) != 0) {
         printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
-        return 1;
+        return errno;
     }
 
     return 0;
