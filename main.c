@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
 	char * dev;
 	char * plaintext;
 	//char * inverted;
-	size_t text_size = MAX_BUFFER_SIZE;
+	int text_size = MAX_BUFFER_SIZE;
 
     get_args(argc, argv, &dev);
 
@@ -54,38 +54,48 @@ int main(int argc, char *argv[]) {
     //write(serial_port, "Hello, world!", sizeof(msg));
 
     //memset(&read_buf, '\0', sizeof(read_buf));
-    plaintext = malloc(text_size);
+    plaintext = (char *) malloc(text_size);
     if (!plaintext) {
         printf("Error %i - malloc: %s\n", errno, strerror(errno));
         return errno;
     }
-    read(serial_port, plaintext, text_size);
+
+    text_size = strlen("aabb");
+    memcpy( plaintext, "aabb", text_size);
     while (1)
     {   
+        printf("write %s\n", plaintext);
+        text_size = write(serial_port, plaintext, text_size);
+        printf("writed %d bytes\n", text_size);
         memset(plaintext,0x00, MAX_BUFFER_SIZE);
         // int num_bytes = read(serial_port, &plaintext, sizeof(plaintext));
-        int num_bytes = read(serial_port, plaintext, text_size);
-
-        if (num_bytes < 0) {
-            printf("Error reading: %s", strerror(errno));
-            break;
-        }
-        if (num_bytes > 0)
+        while (1)
         {
-            printf("Read %i bytes. \nReceived message:\n%s\n", num_bytes, plaintext);
-            int m = (num_bytes / 2) -1;
-            int i = 0;
-            num_bytes --;
-            char aux = 0;
-            for(; i < m; i++)
-            {
-                aux = plaintext[i];
-                plaintext[i] = plaintext[num_bytes - i];
-                plaintext[num_bytes - i] = aux;
+            int num_bytes = read(serial_port, plaintext, MAX_BUFFER_SIZE);
+            if (num_bytes < 0) {
+                printf("Error reading: %s", strerror(errno));
+                break;
             }
-            printf("Invert message:\n%s\n", plaintext);
+            if (num_bytes > 0)
+            {
+                printf("read\n");
+                printf("Read %i bytes. \nReceived message:\n%s\n", num_bytes, plaintext);
+                int m = num_bytes / 2;
+                int i = 0;
+                num_bytes --;
+                char aux = 0;
+                for(; i < m; i++)
+                {
+                    aux = plaintext[i];
+                    plaintext[i] = plaintext[num_bytes - i];
+                    plaintext[num_bytes - i] = aux;
+                }
+                printf("Invert message:\n%s\n", plaintext);
+                break;
+            }
         }
     }
+    free(plaintext);
     close(serial_port);
 
     return 0;
