@@ -3,6 +3,7 @@
 
 // C library headers
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // Linux headers
@@ -12,11 +13,31 @@
 #include <unistd.h> // write(), read(), close()
 
 
+#define MAX_BUFFER_SIZE 100
+
+static void get_args(int argc, char *argv[], char **dev)
+{
+	if (argc != 2) {
+        printf("Unexpected number of arguments %d (expected 1)", argc-1);
+		return;
+	}
+	*dev = argv[1];
+}
+
+
 int config_serial_port(int * serial_port);
 
-int main() {
+int main(int argc, char *argv[]) {
+
+	char * dev;
+	char * plaintext;
+	//char * inverted;
+	size_t text_size = MAX_BUFFER_SIZE;
+
+    get_args(argc, argv, &dev);
+
     // file descriptor - /dev/ttyUSB0
-    int serial_port = open("/dev/ttyUSB0", O_RDWR);
+    int serial_port = open(dev, O_RDWR);
 
     // Check for errors
     if(serial_port < 0) {
@@ -32,16 +53,39 @@ int main() {
     //unsigned char msg[] = { 'H', 'e', 'l', 'l', 'o', '\r' };
     //write(serial_port, "Hello, world!", sizeof(msg));
 
-    char read_buf [256];
-    memset(&read_buf, '\0', sizeof(read_buf));
-
-    int num_bytes = read(serial_port, &read_buf, sizeof(read_buf));
-
-    if (num_bytes < 0) {
-        printf("Error reading: %s", strerror(errno));
+    //memset(&read_buf, '\0', sizeof(read_buf));
+    plaintext = malloc(text_size);
+    if (!plaintext) {
+        printf("Error %i - malloc: %s\n", errno, strerror(errno));
+        return errno;
     }
-    printf("Read %i bytes. Received message: %s", num_bytes, read_buf);
+    read(serial_port, plaintext, text_size);
+    while (1)
+    {   
+        memset(plaintext,0x00, MAX_BUFFER_SIZE);
+        // int num_bytes = read(serial_port, &plaintext, sizeof(plaintext));
+        int num_bytes = read(serial_port, plaintext, text_size);
 
+        if (num_bytes < 0) {
+            printf("Error reading: %s", strerror(errno));
+            break;
+        }
+        if (num_bytes > 0)
+        {
+            printf("Read %i bytes. \nReceived message:\n%s\n", num_bytes, plaintext);
+            int m = (num_bytes / 2) -1;
+            int i = 0;
+            num_bytes --;
+            char aux = 0;
+            for(; i < m; i++)
+            {
+                aux = plaintext[i];
+                plaintext[i] = plaintext[num_bytes - i];
+                plaintext[num_bytes - i] = aux;
+            }
+            printf("Invert message:\n%s\n", plaintext);
+        }
+    }
     close(serial_port);
 
     return 0;
