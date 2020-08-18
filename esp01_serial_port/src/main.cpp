@@ -3,60 +3,48 @@
 #include <string.h>
 #include <stdint.h>
 
-#define CTR 1
-//#define AES128
-
-// https://github.com/kokke/tiny-AES-c
-#include <aes.h>
-
 typedef struct buffer_t {
     uint32_t buffer_size;
     unsigned char * buffer;
 } buffer_t;
 
-
-buffer_t output;
-buffer_t data_size;
-
-struct AES_ctx aes_ctx;
 uint8_t iv[16];
 uint8_t key[16] = {0x99, 0xF3, 0xCC, 0xA3, 0xFC, 0xC7, 0x10, 0x76, 0xAC, 0x16,
           0x86, 0x41, 0xD9, 0x06, 0xCE, 0xB5};
 
-void setup() {
-  delay(5000);
-  Serial.begin(115200);
-  delay(5000);
+char input_char;
 
-//
-AES_init_ctx(&aes_ctx, key);
-//
-
-
-
-  data_size.buffer = (unsigned char *) malloc(4);
-  data_size.buffer_size = 4;
-
+void serial_resynchronize() {
+  int i = 0;
+  while (i < 3) {
+    if (Serial.available()) {
+      Serial.readBytes(&input_char, 1);
+      if(input_char=='X') {
+        i++;
+      }
+    }
+  }
 }
- 
+
+void setup() {
+  Serial.begin(115200);
+  delay(500);
+  serial_resynchronize();
+}
+
+void serial_write_data(buffer_t * input) {
+  uint8_t len = input->buffer_size;
+  Serial.write(len);
+  Serial.write(input->buffer, input->buffer_size);
+  Serial.write("XXX", 3);
+}
+
 void loop() {
-  delay(2000);
-
-  char * data_char = "123456789";
-  int size = strlen(data_char);
-  memcpy(data_size.buffer, &size, sizeof(int));
-
-  Serial.write(data_size.buffer, data_size.buffer_size);
-
-  output.buffer = (unsigned char *) malloc(size);
-  output.buffer_size = size;
-  memcpy(output.buffer, data_char, size);
-  
-  AES_ctx_set_iv(&aes_ctx, iv);
-  AES_CTR_xcrypt_buffer(&aes_ctx, output.buffer, output.buffer_size);
-  
-  Serial.write(output.buffer, output.buffer_size);
-  free(output.buffer);
+  unsigned char data_str[] = "12345678901";
+  buffer_t data = { .buffer_size = 11, .buffer = data_str};
+  serial_write_data(&data);
+  delay(10);
+  serial_resynchronize();
 }
 
 /*

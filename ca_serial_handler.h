@@ -15,12 +15,39 @@
 #include <errno.h>
 #include <termios.h>
 
-
+#include "defines.h"
 
 int init_serial_port(int * serial_port, char ** dev);
 int config_serial_port(int * serial_port);
 
-// ------------------------
+void ready_serial_port(int * serial_port);
+int read_serial_port(int * serial_port, buffer_t * output);
+
+void ready_serial_port(int * serial_port) {
+    unsigned char output[] = STRING_SYNCHRONIZE;
+    write(*serial_port, output, STRING_SYNCHRONIZE_SIZE);
+}
+
+int read_serial_port(int * serial_port, buffer_t * output) {
+    unsigned char synchronize[STRING_SYNCHRONIZE_SIZE];
+    uint8_t len;
+    
+    ready_serial_port(serial_port);
+    memset(output->buffer, 0, output->buffer_size);
+    
+    read(*serial_port, &len, 1);
+    if (len > output->buffer_size) {
+        read(*serial_port, NULL, len);
+        return 1;
+    }
+
+    output->buffer_size = read(*serial_port, output->buffer, len);
+    
+    read(*serial_port, synchronize, STRING_SYNCHRONIZE_SIZE);
+    if (memcmp(STRING_SYNCHRONIZE, synchronize, STRING_SYNCHRONIZE_SIZE))
+        return 1;
+    return 0;
+}
 
 
 int init_serial_port(int * serial_port, char ** dev) {
